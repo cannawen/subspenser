@@ -1,10 +1,11 @@
 (ns spenser-server.core
   (:gen-class)
   (:require
+   [clojure.string :as string]
    [org.httpkit.server :as http]
-   [clojure.string :as string])
+   [spenser-server.report :as report])
   (:import
-   [java.io FileWriter BufferedWriter File]
+   [java.io BufferedWriter File FileWriter]
    [java.nio.file Files Paths StandardCopyOption]
    [java.time Instant]
    [java.util.concurrent.locks ReentrantLock]))
@@ -48,39 +49,52 @@
       (.unlock file-lock))))
 
 (defn handler [req]
-  (if (= (:request-method req) :delete)
+  (case (:request-method req)
+    :get
+    (if (.exists (File. data-file))
+      (let [data (report/load-data data-file)]
+        {:status  200
+         :headers {"Content-Type" "text/html"}
+         :body    (report/render-html data)})
+      {:status  404
+       :headers {"Content-Type" "text/plain"}
+       :body    "No measurements file found.\n"})
+
+    :post
+    (let [body (some-> (:body req) slurp)]
+      (if (seq body)
+        (let [entries (parse-body body)]
+          (if (seq entries)
+            (do
+              (append-to-file! entries)
+              (println "Received")
+              {:status  200
+               :headers {"Content-Type" "text/plain"}})
+            {:status  400
+             :headers {"Content-Type" "text/plain"}
+             :body    "No valid entries found. Expected format: timestamp,value;timestamp,value\n"}))
+        {:status  400
+         :headers {"Content-Type" "text/plain"}
+         :body    "Empty body.\n"}))
+
+    :delete
     (if (.exists (File. data-file))
       (let [archive-file (archive-and-clear!)]
         (println "Archived and cleared")
-        {:status 200
+        {:status  200
          :headers {"Content-Type" "text/plain"}
-         :body (str "Archived to " archive-file "\n")})
-      {:status 404
+         :body    (str "Archived to " archive-file "\n")})
+      {:status  404
        :headers {"Content-Type" "text/plain"}
-       :body "No measurements file found.\n"})
-    (if (= (:request-method req) :post)
-      (let [body (some-> (:body req) slurp)]
-        (if (seq body)
-          (let [entries (parse-body body)]
-            (if (seq entries)
-              (do
-                (append-to-file! entries)
-                (println "Received")
-                {:status 200
-                 :headers {"Content-Type" "text/plain"}})
-              {:status 400
-               :headers {"Content-Type" "text/plain"}
-               :body "No valid entries found. Expected format: timestamp,value;timestamp,value\n"}))
-          {:status 400
-           :headers {"Content-Type" "text/plain"}
-           :body "Empty body.\n"}))
-      {:status 405
-       :headers {"Content-Type" "text/plain"}
-       :body "Method not allowed. Use POST or DELETE.\n"})))
+       :body    "No measurements file found.\n"})
+
+    {:status  405
+     :headers {"Content-Type" "text/plain"}
+     :body    "Method not allowed. Use GET, POST, or DELETE.\n"}))
 
 (defn -main [& args]
   (.mkdirs (File. "data"))
   (let [port (or (some-> (first args) Integer/parseInt) 3000)]
     (println (str "Starting server on port " port))
     (println (str "Appending data to: " data-file))
-    (http/run-server handler {:port port})))
+    (http/run-server #'handler {:port port})))
