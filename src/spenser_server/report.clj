@@ -1,10 +1,7 @@
 (ns spenser-server.report
   (:require
    [clojure.string :as string]
-   [huff2.core :as h])
-  (:import
-   [java.time Instant ZoneId ZonedDateTime]
-   [java.time.format DateTimeFormatter]))
+   [huff2.core :as h]))
 
 (defn parse-line [line]
   (let [[ts v] (string/split (string/trim line) #",")]
@@ -17,27 +14,23 @@
        (keep parse-line)
        (sort-by first)))
 
-(defn format-timestamp [ms]
-  (let [inst (Instant/ofEpochMilli ms)
-        zdt  (ZonedDateTime/ofInstant inst (ZoneId/systemDefault))
-        fmt  (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss")]
-    (.format zdt fmt)))
-
 (defn render-html [data]
-  (let [labels (->> data
-                    (map (fn [[ts _]] (str "\"" (format-timestamp ts) "\"")))
-                    (string/join ",")
-                    (format "[%s]"))
+  (let [timestamps (->> data
+                        (map first)
+                        (string/join ",")
+                        (format "[%s]"))
         values (->> data
                     (map second)
                     (string/join ",")
                     (format "[%s]"))
         chart-js (str "
+    const rawTimestamps = " timestamps ";
+    const labels = rawTimestamps.map(ts => new Date(ts).toLocaleString());
     const ctx = document.getElementById('chart').getContext('2d');
     new Chart(ctx, {
       type: 'line',
       data: {
-        labels: " labels ",
+        labels: labels,
         datasets: [{
           label: 'Value',
           data: " values ",
