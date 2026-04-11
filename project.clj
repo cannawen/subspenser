@@ -5,4 +5,5 @@
                  [io.github.escherize/huff "0.2.21"]
                  [ring/ring-core "1.11.0"]]
   :main spenser-server.core
-  :aot [spenser-server.core])
+  :aot [spenser-server.core]
+  :profiles {:uberjar {:aot :all}})
