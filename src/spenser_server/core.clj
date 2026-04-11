@@ -1,58 +1,18 @@
 (ns spenser-server.core
   (:gen-class)
   (:require
-   [clojure.string :as string]
    [org.httpkit.server :as http]
-   [spenser-server.report :as report])
+   [spenser-server.format :as format]
+   [spenser-server.report :as report]
+   [spenser-server.store :as store])
   (:import
-   [java.io BufferedWriter File FileWriter]
-   [java.nio.file Files Paths StandardCopyOption]
-   [java.time Instant]
-   [java.util.concurrent.locks ReentrantLock]))
-
-(def data-file "data/measurements.dat")
-
-(defonce file-lock (ReentrantLock.))
-
-(defn valid-entry? [[ts v]]
-  (and (re-matches #"\d+" (string/trim ts))
-       (re-matches #"\d+" (string/trim v))))
-
-(defn parse-body [body]
-  (->> (string/split (string/trim body) #";")
-       (map #(string/split % #"," 2))
-       (filter #(= 2 (count %)))
-       (filter valid-entry?)
-       (map (fn [[ts v]]
-              [(parse-long (string/trim ts))
-               (parse-long (string/trim v))]))))
-
-(defn append-to-file! [entries]
-  (.lock file-lock)
-  (try
-    (with-open [w (BufferedWriter. (FileWriter. data-file true))]
-      (doseq [[ts v] entries]
-        (.write w (str ts "," v "\n"))))
-    (finally
-      (.unlock file-lock))))
-
-(defn archive-and-clear! []
-  (.lock file-lock)
-  (try
-    (let [archive-file (str "data/measurements-" (Instant/now) ".dat")]
-      (Files/copy (Paths/get data-file (make-array String 0))
-                  (Paths/get archive-file (make-array String 0))
-                  (into-array StandardCopyOption [StandardCopyOption/REPLACE_EXISTING]))
-      (with-open [_ (FileWriter. data-file false)])
-      archive-file)
-    (finally
-      (.unlock file-lock))))
+   [java.io File]))
 
 (defn handler [req]
   (case (:request-method req)
     :get
-    (if (.exists (File. data-file))
-      (let [data (report/load-data data-file)]
+    (if (store/exists?)
+      (let [data (report/load-data store/data-file)]
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (report/render-html data)})
@@ -63,10 +23,10 @@
     :post
     (let [body (some-> (:body req) slurp)]
       (if (seq body)
-        (let [entries (parse-body body)]
+        (let [entries (format/parse-body body)]
           (if (seq entries)
             (do
-              (append-to-file! entries)
+              (store/append! entries)
               (println "Received")
               {:status  200
                :headers {"Content-Type" "text/plain"}})
@@ -78,8 +38,8 @@
          :body    "Empty body.\n"}))
 
     :delete
-    (if (.exists (File. data-file))
-      (let [archive-file (archive-and-clear!)]
+    (if (store/exists?)
+      (let [archive-file (store/archive-and-clear!)]
         (println "Archived and cleared")
         {:status  200
          :headers {"Content-Type" "text/plain"}
@@ -96,5 +56,5 @@
   (.mkdirs (File. "data"))
   (let [port (or (some-> (first args) Integer/parseInt) 3000)]
     (println (str "Starting server on port " port))
-    (println (str "Appending data to: " data-file))
+    (println (str "Appending data to: " store/data-file))
     (http/run-server #'handler {:port port})))
