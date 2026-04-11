@@ -8,49 +8,65 @@
   (:import
    [java.io File]))
 
-(defn handler [req]
+(defn raw-handler [req]
   (case (:request-method req)
     :get
     (if (store/exists?)
-      (let [data (report/load-data store/data-file)]
-        {:status  200
-         :headers {"Content-Type" "text/html"}
-         :body    (report/render-html data)})
+      {:status  200
+       :headers {"Content-Type" "text/plain"}
+       :body    (slurp store/data-file)}
       {:status  404
        :headers {"Content-Type" "text/plain"}
        :body    "No measurements file found.\n"})
-
-    :post
-    (let [body (some-> (:body req) slurp)]
-      (if (seq body)
-        (let [entries (format/parse-body body)]
-          (if (seq entries)
-            (do
-              (store/append! entries)
-              (println "Received")
-              {:status  200
-               :headers {"Content-Type" "text/plain"}})
-            {:status  400
-             :headers {"Content-Type" "text/plain"}
-             :body    "No valid entries found. Expected format: timestamp,value;timestamp,value\n"}))
-        {:status  400
-         :headers {"Content-Type" "text/plain"}
-         :body    "Empty body.\n"}))
-
-    :delete
-    (if (store/exists?)
-      (let [archive-file (store/archive-and-clear!)]
-        (println "Archived and cleared")
-        {:status  200
-         :headers {"Content-Type" "text/plain"}
-         :body    (str "Archived to " archive-file "\n")})
-      {:status  404
-       :headers {"Content-Type" "text/plain"}
-       :body    "No measurements file found.\n"})
-
     {:status  405
      :headers {"Content-Type" "text/plain"}
-     :body    "Method not allowed. Use GET, POST, or DELETE.\n"}))
+     :body    "Method not allowed. Use GET.\n"}))
+
+(defn handler [req]
+  (if (= (:uri req) "/raw")
+    (raw-handler req)
+    (case (:request-method req)
+      :get
+      (if (store/exists?)
+        (let [data (report/load-data store/data-file)]
+          {:status  200
+           :headers {"Content-Type" "text/html"}
+           :body    (report/render-html data)})
+        {:status  404
+         :headers {"Content-Type" "text/plain"}
+         :body    "No measurements file found.\n"})
+
+      :post
+      (let [body (some-> (:body req) slurp)]
+        (if (seq body)
+          (let [entries (format/parse-body body)]
+            (if (seq entries)
+              (do
+                (store/append! entries)
+                (println "Received")
+                {:status  200
+                 :headers {"Content-Type" "text/plain"}})
+              {:status  400
+               :headers {"Content-Type" "text/plain"}
+               :body    "No valid entries found. Expected format: timestamp,value;timestamp,value\n"}))
+          {:status  400
+           :headers {"Content-Type" "text/plain"}
+           :body    "Empty body.\n"}))
+
+      :delete
+      (if (store/exists?)
+        (let [archive-file (store/archive-and-clear!)]
+          (println "Archived and cleared")
+          {:status  200
+           :headers {"Content-Type" "text/plain"}
+           :body    (str "Archived to " archive-file "\n")})
+        {:status  404
+         :headers {"Content-Type" "text/plain"}
+         :body    "No measurements file found.\n"})
+
+      {:status  405
+       :headers {"Content-Type" "text/plain"}
+       :body    "Method not allowed. Use GET, POST, or DELETE.\n"})))
 
 (defn -main [& args]
   (.mkdirs (File. "data"))
