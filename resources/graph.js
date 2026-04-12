@@ -2,30 +2,6 @@ const rawTimestamps = %s;
 const allValues = %s;
 const ctx = document.getElementById('chart').getContext('2d');
 
-function buildMidnightAnnotations(timestamps) {
-  if (timestamps.length === 0) return {};
-  const minTs = Math.min(...timestamps);
-  const maxTs = Math.max(...timestamps);
-  const annotations = {};
-  const d = new Date(minTs);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  let i = 0;
-  while (d.getTime() <= maxTs) {
-    annotations['m' + i] = {
-      type: 'line',
-      xMin: d.getTime(),
-      xMax: d.getTime(),
-      borderColor: 'rgba(0, 0, 0, 0.25)',
-      borderWidth: 1,
-      borderDash: [4, 4]
-    };
-    d.setDate(d.getDate() + 1);
-    i++;
-  }
-  return annotations;
-}
-
 const dayMap = {};
 rawTimestamps.forEach(function(ts, i) {
   const date = new Date(ts);
@@ -68,8 +44,7 @@ const chart = new Chart(ctx, {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false },
-      annotation: { annotations: buildMidnightAnnotations(rawTimestamps) }
+      legend: { display: false }
     },
     scales: {
       x: {
@@ -107,8 +82,6 @@ const chart = new Chart(ctx, {
 
 select.addEventListener('change', function() {
   const indices = dayMap[this.value].indices;
-  const filteredTs = indices.map(function(i) { return rawTimestamps[i]; });
   chart.data.datasets[0].data = indices.map(function(i) { return { x: rawTimestamps[i], y: allValues[i] }; });
-  chart.options.plugins.annotation.annotations = buildMidnightAnnotations(filteredTs);
   chart.update();
 });
