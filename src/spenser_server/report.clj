@@ -72,6 +72,7 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           annotation: { annotations: midnightAnnotations }
@@ -116,13 +117,11 @@
         [:script {:src "https://cdn.jsdelivr.net/npm/chart.js"}]
         [:script {:src "https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"}]
         [:style "
-                body { font-family: sans-serif; margin: 2rem; background: #f5f5f5; }
-                      h1   { color: #333; }
-                            .chart-container { background: white; border-radius: 8px; padding: 1.5rem;
-                                              box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 1200px; }"]]
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                html, body { width: 100%; height: 100%; }
+                body { font-family: sans-serif; background: #f5f5f5; display: flex; flex-direction: column; }
+                .chart-container { flex: 1; background: white; padding: 1.5rem; position: relative; }"]]
        [:body
-        [:h1 "Measurements Over Time"]
-        [:p (count data) " data points"]
         [:div.chart-container
          [:canvas#chart]]
         [:script [:hiccup/raw-html chart-js]]]]))))
