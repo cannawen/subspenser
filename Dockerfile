@@ -3,6 +3,7 @@ WORKDIR /app
 COPY project.clj .
 RUN lein deps
 COPY src/ src/
+COPY resources/ resources/
 RUN lein uberjar
 
 FROM eclipse-temurin:21-jre
