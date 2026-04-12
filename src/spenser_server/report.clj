@@ -35,6 +35,7 @@
         [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
         [:title "Measurements Report"]
         [:script {:src "https://cdn.jsdelivr.net/npm/chart.js"}]
+        [:script {:src "https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"}]
         [:script {:src "https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"}]
         [:style "
                 * { box-sizing: border-box; margin: 0; padding: 0; }

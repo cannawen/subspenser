@@ -12,15 +12,10 @@ function buildMidnightAnnotations(timestamps) {
   d.setDate(d.getDate() + 1);
   let i = 0;
   while (d.getTime() <= maxTs) {
-    let closest = 0, minDiff = Infinity;
-    timestamps.forEach(function(ts, idx) {
-      const diff = Math.abs(ts - d.getTime());
-      if (diff < minDiff) { minDiff = diff; closest = idx; }
-    });
     annotations['m' + i] = {
       type: 'line',
-      xMin: closest,
-      xMax: closest,
+      xMin: d.getTime(),
+      xMax: d.getTime(),
       borderColor: 'rgba(0, 0, 0, 0.25)',
       borderWidth: 1,
       borderDash: [4, 4]
@@ -51,10 +46,9 @@ Object.keys(dayMap).sort().forEach(function(key) {
 const chart = new Chart(ctx, {
   type: 'line',
   data: {
-    labels: rawTimestamps.map(function(ts) { return new Date(ts).toLocaleString(); }),
     datasets: [{
       label: 'Value',
-      data: allValues,
+      data: rawTimestamps.map(function(ts, i) { return { x: ts, y: allValues[i] }; }),
       borderColor: 'rgb(59, 130, 246)',
       backgroundColor: 'rgba(59, 130, 246, 0.7)',
       borderWidth: 0,
@@ -71,7 +65,12 @@ const chart = new Chart(ctx, {
     },
     scales: {
       x: {
-        ticks: { maxTicksLimit: 12, maxRotation: 30 }
+        type: 'time',
+        time: {
+          unit: 'hour',
+          displayFormats: { hour: 'HH:mm' }
+        },
+        ticks: { maxRotation: 30 }
       },
       y: {
         min: 500000,
@@ -101,8 +100,7 @@ const chart = new Chart(ctx, {
 select.addEventListener('change', function() {
   const indices = dayMap[this.value].indices;
   const filteredTs = indices.map(function(i) { return rawTimestamps[i]; });
-  chart.data.labels = filteredTs.map(function(ts) { return new Date(ts).toLocaleString(); });
-  chart.data.datasets[0].data = indices.map(function(i) { return allValues[i]; });
+  chart.data.datasets[0].data = indices.map(function(i) { return { x: rawTimestamps[i], y: allValues[i] }; });
   chart.options.plugins.annotation.annotations = buildMidnightAnnotations(filteredTs);
   chart.update();
 });
