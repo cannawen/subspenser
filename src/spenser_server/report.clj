@@ -51,7 +51,8 @@
             ticks: { maxTicksLimit: 12, maxRotation: 30 }
           },
           y: {
-            beginAtZero: false
+            min: 500000,
+            max: 800000
           },
           y2: {
             position: 'right',
