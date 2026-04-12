@@ -27,6 +27,35 @@
     const rawTimestamps = " timestamps ";
     const labels = rawTimestamps.map(ts => new Date(ts).toLocaleString());
     const ctx = document.getElementById('chart').getContext('2d');
+
+    const minTs = Math.min(...rawTimestamps);
+    const maxTs = Math.max(...rawTimestamps);
+    const midnights = [];
+    const d = new Date(minTs);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 1);
+    while (d.getTime() <= maxTs) {
+      midnights.push(d.getTime());
+      d.setDate(d.getDate() + 1);
+    }
+
+    const midnightAnnotations = {};
+    midnights.forEach(function(mts, i) {
+      let closest = 0, minDiff = Infinity;
+      rawTimestamps.forEach(function(ts, idx) {
+        const diff = Math.abs(ts - mts);
+        if (diff < minDiff) { minDiff = diff; closest = idx; }
+      });
+      midnightAnnotations['m' + i] = {
+        type: 'line',
+        xMin: closest,
+        xMax: closest,
+        borderColor: 'rgba(0, 0, 0, 0.25)',
+        borderWidth: 1,
+        borderDash: [4, 4]
+      };
+    });
+
     new Chart(ctx, {
       type: 'line',
       data: {
@@ -44,7 +73,8 @@
       options: {
         responsive: true,
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          annotation: { annotations: midnightAnnotations }
         },
         scales: {
           x: {
@@ -84,6 +114,7 @@
         [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
         [:title "Measurements Report"]
         [:script {:src "https://cdn.jsdelivr.net/npm/chart.js"}]
+        [:script {:src "https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"}]
         [:style "
                 body { font-family: sans-serif; margin: 2rem; background: #f5f5f5; }
                       h1   { color: #333; }
