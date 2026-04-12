@@ -43,6 +43,14 @@ Object.keys(dayMap).sort().forEach(function(key) {
   select.appendChild(opt);
 });
 
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const todayKey = String(today.getTime());
+if (dayMap[todayKey]) {
+  select.value = todayKey;
+  select.dispatchEvent(new Event('change'));
+}
+
 const chart = new Chart(ctx, {
   type: 'line',
   data: {
