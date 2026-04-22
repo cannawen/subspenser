@@ -25,17 +25,20 @@
        :headers {"Content-Type" "text/plain"}
        :body    "No measurements files found.\n"})))
 
-(defn get-index [req]
+(defn get-index [_req]
+  {:status  200
+   :headers {"Content-Type" "text/html"}
+   :body    (report/render-html (store/list-dates))})
+
+(defn get-data [req]
   (let [date-str (or (get-in req [:query-params "date"]) (store/today-str))
         data-file (store/data-file-for-date date-str)
-        data (report/load-data data-file)]
-    (if (seq data)
-      {:status  200
-       :headers {"Content-Type" "text/html"}
-       :body    (report/render-html data date-str)}
-      {:status  404
-       :headers {"Content-Type" "text/plain"}
-       :body    (str "No data for " date-str "\n")})))
+        data (report/load-data data-file)
+        timestamps (string/join "," (map first data))
+        values     (string/join "," (map second data))]
+    {:status  200
+     :headers {"Content-Type" "application/json"}
+     :body    (str "{\"timestamps\":[" timestamps "],\"values\":[" values "]}")}))
 
 (defn post-index [req]
   (let [body (some-> (:body req) slurp)]
@@ -71,6 +74,7 @@
         [["/" {:get    get-index
                :post   post-index
                :delete delete-index}]
+         ["/data" {:get get-data}]
          ["/raw" {:get get-raw}]])
        (rring/create-default-handler))
       params/wrap-params))

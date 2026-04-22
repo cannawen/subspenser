@@ -34,6 +34,12 @@
          (filter (fn [f] (re-matches #"\d{4}-\d{2}-\d{2}-measurements\.dat" (.getName f))))
          (sort-by #(.getName %)))))
 
+(defn list-dates []
+  (->> (list-data-files)
+       (map (fn [f] (-> (.getName f)
+                        (string/replace #"-measurements\.dat$" ""))))
+       reverse))
+
 (defn exists? []
   (boolean (seq (list-data-files))))
 

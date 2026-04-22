@@ -1,5 +1,3 @@
-const rawTimestamps = %s;
-const allValues = %s;
 const ctx = document.getElementById('chart').getContext('2d');
 
 const defaults = { yMin: 500000, yMax: 800000, offset: 540860, factor: 24.267 };
@@ -38,7 +36,7 @@ const chart = new Chart(ctx, {
   data: {
     datasets: [{
       label: 'Value',
-      data: rawTimestamps.map(function(ts, i) { return { x: ts, y: allValues[i] }; }),
+      data: [],
       borderColor: 'rgb(59, 130, 246)',
       backgroundColor: 'rgba(59, 130, 246, 0.7)',
       borderWidth: 0,
@@ -49,6 +47,7 @@ const chart = new Chart(ctx, {
   options: {
     responsive: true,
     maintainAspectRatio: false,
+    animation: false,
     plugins: {
       legend: { display: false }
     },
@@ -87,6 +86,26 @@ const chart = new Chart(ctx, {
     }
   }
 });
+
+function fetchData(dateStr) {
+  fetch('/data?date=' + dateStr)
+    .then(function(res) { return res.json(); })
+    .then(function(d) {
+      chart.data.datasets[0].data = d.timestamps.map(function(ts, i) {
+        return { x: ts, y: d.values[i] };
+      });
+      chart.update();
+    });
+}
+
+const dayPick = document.getElementById('day-pick');
+dayPick.addEventListener('change', function() {
+  fetchData(this.value);
+});
+
+if (dayPick.value) {
+  fetchData(dayPick.value);
+}
 
 function wireInput(id, key, parse) {
   const el = document.getElementById(id);
