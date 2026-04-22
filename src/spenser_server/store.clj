@@ -80,7 +80,10 @@
                            (keep (fn [line]
                                    (let [parts (string/split (string/trim line) #",")]
                                      (when (= 2 (count parts))
-                                       [(parse-long (first parts)) (parse-long (second parts))])))))]
+                                       (let [ts (parse-long (first parts))
+                                             v  (parse-long (second parts))]
+                                         (when (and ts v)
+                                           [ts v])))))))]
           (doseq [[date-str date-entries] (group-by (fn [[ts _]] (date-str-from-ts ts)) entries)]
             (with-open [w (BufferedWriter. (FileWriter. (data-file-for-date date-str) true))]
               (doseq [[ts v] date-entries]
