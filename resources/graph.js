@@ -2,31 +2,6 @@ const rawTimestamps = %s;
 const allValues = %s;
 const ctx = document.getElementById('chart').getContext('2d');
 
-const dayMap = {};
-rawTimestamps.forEach(function(ts, i) {
-  const date = new Date(ts);
-  date.setHours(0, 0, 0, 0);
-  const key = date.getTime();
-  if (!dayMap[key]) dayMap[key] = { label: date.toLocaleDateString(), indices: [] };
-  dayMap[key].indices.push(i);
-});
-
-const select = document.getElementById('day-select');
-Object.keys(dayMap).sort().forEach(function(key) {
-  const opt = document.createElement('option');
-  opt.value = key;
-  opt.textContent = dayMap[key].label;
-  select.appendChild(opt);
-});
-
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-const todayKey = String(today.getTime());
-if (dayMap[todayKey]) {
-  select.value = todayKey;
-  select.dispatchEvent(new Event('change'));
-}
-
 const chart = new Chart(ctx, {
   type: 'line',
   data: {
@@ -78,10 +53,4 @@ const chart = new Chart(ctx, {
       }
     }
   }
-});
-
-select.addEventListener('change', function() {
-  const indices = dayMap[this.value].indices;
-  chart.data.datasets[0].data = indices.map(function(i) { return { x: rawTimestamps[i], y: allValues[i] }; });
-  chart.update();
 });

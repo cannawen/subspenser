@@ -1,32 +1,41 @@
 (ns spenser-server.core
   (:gen-class)
   (:require
+   [clojure.string :as string]
    [org.httpkit.server :as http]
    [reitit.ring :as rring]
+   [ring.middleware.params :as params]
    [spenser-server.format :as format]
    [spenser-server.report :as report]
    [spenser-server.store :as store])
   (:import
    [java.io File]))
 
-(defn get-raw [_req]
-  (if (store/exists?)
-    {:status  200
-     :headers {"Content-Type" "text/plain"}
-     :body    (slurp store/data-file)}
-    {:status  404
-     :headers {"Content-Type" "text/plain"}
-     :body    "No measurements file found.\n"}))
+(defn get-raw [req]
+  (let [date-str (get-in req [:query-params "date"])
+        files (if date-str
+                (let [f (store/data-file-for-date date-str)]
+                  (when (.exists (File. f)) [f]))
+                (map #(.getPath %) (store/list-data-files)))]
+    (if (seq files)
+      {:status  200
+       :headers {"Content-Type" "text/plain"}
+       :body    (string/join "" (map slurp files))}
+      {:status  404
+       :headers {"Content-Type" "text/plain"}
+       :body    "No measurements files found.\n"})))
 
-(defn get-index [_req]
-  (if (store/exists?)
-    (let [data (report/load-data store/data-file)]
+(defn get-index [req]
+  (let [date-str (or (get-in req [:query-params "date"]) (store/today-str))
+        data-file (store/data-file-for-date date-str)
+        data (report/load-data data-file)]
+    (if (seq data)
       {:status  200
        :headers {"Content-Type" "text/html"}
-       :body    (report/render-html data)})
-    {:status  404
-     :headers {"Content-Type" "text/plain"}
-     :body    "No measurements file found.\n"}))
+       :body    (report/render-html data date-str)}
+      {:status  404
+       :headers {"Content-Type" "text/plain"}
+       :body    (str "No data for " date-str "\n")})))
 
 (defn post-index [req]
   (let [body (some-> (:body req) slurp)]
@@ -47,27 +56,28 @@
 
 (defn delete-index [_req]
   (if (store/exists?)
-    (let [archive-file (store/archive-and-clear!)]
+    (let [result (store/archive-and-clear!)]
       (println "Archived and cleared")
       {:status  200
        :headers {"Content-Type" "text/plain"}
-       :body    (str "Archived to " archive-file "\n")})
+       :body    (str result "\n")})
     {:status  404
      :headers {"Content-Type" "text/plain"}
-     :body    "No measurements file found.\n"}))
+     :body    "No measurements files found.\n"}))
 
 (def app
-  (rring/ring-handler
-   (rring/router
-    [["/" {:get    get-index
-           :post   post-index
-           :delete delete-index}]
-     ["/raw" {:get get-raw}]])
-   (rring/create-default-handler)))
+  (-> (rring/ring-handler
+       (rring/router
+        [["/" {:get    get-index
+               :post   post-index
+               :delete delete-index}]
+         ["/raw" {:get get-raw}]])
+       (rring/create-default-handler))
+      params/wrap-params))
 
 (defn -main [& args]
-  (.mkdirs (File. "data"))
+  (.mkdirs (File. store/data-dir))
+  (store/migrate-legacy!)
   (let [port (or (some-> (first args) Integer/parseInt) 3000)]
     (println (str "Starting server on port " port))
-    (println (str "Appending data to: " store/data-file))
     (http/run-server #'app {:port port})))

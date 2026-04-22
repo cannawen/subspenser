@@ -10,12 +10,13 @@
       [(parse-long ts) (parse-long v)])))
 
 (defn load-data [data-file]
-  (->> (slurp data-file)
-       string/split-lines
-       (keep parse-line)
-       (sort-by first)))
+  (when (.exists (io/file data-file))
+    (->> (slurp data-file)
+         string/split-lines
+         (keep parse-line)
+         (sort-by first))))
 
-(defn render-html [data]
+(defn render-html [data date-str]
   (let [timestamps (->> data
                         (map first)
                         (string/join ",")
@@ -43,12 +44,14 @@
                 body { font-family: sans-serif; background: #f5f5f5; display: flex; flex-direction: column; }
                 .toolbar { padding: 0.5rem 1rem; background: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 0.5rem; }
                 .toolbar label { font-size: 0.875rem; color: #555; }
-                .toolbar select { font-size: 0.875rem; padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; }
+                .toolbar input[type=date] { font-size: 0.875rem; padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; }
                 .chart-container { flex: 1; background: white; padding: 1.5rem; position: relative; }"]]
        [:body
         [:div.toolbar
-         [:label {:for "day-select"} "Day"]
-         [:select#day-select]]
+         [:label {:for "day-pick"} "Day"]
+         [:input#day-pick {:type "date"
+                           :value date-str
+                           :onchange "window.location.href='/?date='+this.value"}]]
         [:div.chart-container
          [:canvas#chart]]
         [:script [:hiccup/raw-html chart-js]]]]))))
