@@ -138,9 +138,11 @@ wireInput('factor',  'factor', parseFloat);
 document.getElementById('auto-y').addEventListener('click', function() {
   const pts = chart.data.datasets[0].data;
   if (!pts.length) return;
-  const values = pts.map(function(p) { return p.y; });
-  const lo = Math.min.apply(null, values);
-  const hi = Math.max.apply(null, values);
+  const values = pts.map(function(p) { return p.y; }).sort(function(a, b) { return a - b; });
+  const p1  = Math.floor(values.length * 0.01);
+  const p99 = Math.ceil(values.length * 0.99) - 1;
+  const lo = values[p1];
+  const hi = values[p99];
   const buf = (hi - lo) * 0.1;
   const s = loadSettings();
   s.yMin = Math.round(lo - buf);
