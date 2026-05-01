@@ -1,22 +1,12 @@
 (ns spenser-server.report
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as string]
-   [huff2.core :as h]))
+   [huff2.core :as h]
+   [spenser-server.store :as store]))
 
-(defn parse-line [line]
-  (let [[ts v] (string/split (string/trim line) #",")]
-    (when (and ts v)
-      [(parse-long ts) (parse-long v)])))
+(def load-data store/load-data)
 
-(defn load-data [data-file]
-  (when (.exists (io/file data-file))
-    (->> (slurp data-file)
-         string/split-lines
-         (keep parse-line)
-         (sort-by first))))
-
-(defn render-html [dates]
+(defn render-html []
   (str
    (h/html
     {:doctype? true
@@ -44,8 +34,7 @@
      [:body
       [:div.toolbar
        [:label {:for "day-pick"} "Day"]
-       (into [:select#day-pick]
-             (map (fn [d] [:option {:value d} d]) dates))
+       [:select#day-pick]
        [:div.sep]
        [:label {:for "y-min"} "Y min"]
        [:input#y-min {:type "number" :step "1000"}]

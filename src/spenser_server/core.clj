@@ -28,12 +28,24 @@
 (defn get-index [_req]
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    (report/render-html (store/list-dates))})
+   :body    (report/render-html)})
+
+(defn get-dates [req]
+  (let [tz-str (get-in req [:query-params "tz"])
+        dates  (if tz-str
+                 (store/list-dates-for-tz tz-str)
+                 (store/list-dates))
+        body   (str "[" (string/join "," (map (fn [d] (str "\"" d "\"")) dates)) "]")]
+    {:status  200
+     :headers {"Content-Type" "application/json"}
+     :body    body}))
 
 (defn get-data [req]
   (let [date-str (or (get-in req [:query-params "date"]) (store/today-str))
-        data-file (store/data-file-for-date date-str)
-        data (report/load-data data-file)
+        tz-str   (get-in req [:query-params "tz"])
+        data     (if tz-str
+                   (store/load-data-for-user-day date-str tz-str)
+                   (report/load-data (store/data-file-for-date date-str)))
         timestamps (string/join "," (map first data))
         values     (string/join "," (map second data))]
     {:status  200
@@ -74,6 +86,7 @@
         [["/" {:get    get-index
                :post   post-index
                :delete delete-index}]
+         ["/dates" {:get get-dates}]
          ["/data" {:get get-data}]
          ["/raw" {:get get-raw}]])
        (rring/create-default-handler))

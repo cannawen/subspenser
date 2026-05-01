@@ -87,8 +87,10 @@ const chart = new Chart(ctx, {
   }
 });
 
+const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 function fetchData(dateStr) {
-  fetch('/data?date=' + dateStr)
+  fetch('/data?date=' + dateStr + '&tz=' + encodeURIComponent(browserTz))
     .then(function(res) { return res.json(); })
     .then(function(d) {
       chart.data.datasets[0].data = d.timestamps.map(function(ts, i) {
@@ -103,9 +105,19 @@ dayPick.addEventListener('change', function() {
   fetchData(this.value);
 });
 
-if (dayPick.value) {
-  fetchData(dayPick.value);
-}
+fetch('/dates?tz=' + encodeURIComponent(browserTz))
+  .then(function(res) { return res.json(); })
+  .then(function(dates) {
+    dates.forEach(function(d) {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      dayPick.appendChild(opt);
+    });
+    if (dayPick.value) {
+      fetchData(dayPick.value);
+    }
+  });
 
 function wireInput(id, key, parse) {
   const el = document.getElementById(id);

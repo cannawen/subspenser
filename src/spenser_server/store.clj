@@ -1,5 +1,6 @@
 (ns spenser-server.store
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as string])
   (:import
    [java.io BufferedWriter File FileWriter]
@@ -39,6 +40,55 @@
        (map (fn [f] (-> (.getName f)
                         (string/replace #"-measurements\.dat$" ""))))
        reverse))
+
+(defn parse-line [line]
+  (let [[ts v] (string/split (string/trim line) #",")]
+    (when (and ts v)
+      [(parse-long ts) (parse-long v)])))
+
+(defn load-data [data-file]
+  (when (.exists (io/file data-file))
+    (->> (slurp data-file)
+         string/split-lines
+         (keep parse-line)
+         (sort-by first))))
+
+(defn- start-of-day-ms [^LocalDate date ^ZoneId tz-id]
+  (-> date (.atStartOfDay tz-id) .toInstant .toEpochMilli))
+
+(defn- server-dates-for-range [start-ms end-ms]
+  (let [start-date (-> (Instant/ofEpochMilli start-ms) (.atZone system-zone) .toLocalDate)
+        end-date   (-> (Instant/ofEpochMilli (dec end-ms)) (.atZone system-zone) .toLocalDate)]
+    (loop [d start-date result []]
+      (if (.isAfter d end-date)
+        result
+        (recur (.plusDays d 1) (conj result (.format d date-fmt)))))))
+
+(defn list-dates-for-tz [tz-str]
+  (let [tz-id (ZoneId/of tz-str)]
+    (->> (list-dates)
+         (mapcat (fn [server-date]
+                   (let [parsed    (LocalDate/parse server-date date-fmt)
+                         start-ms  (start-of-day-ms parsed system-zone)
+                         end-ms    (start-of-day-ms (.plusDays parsed 1) system-zone)
+                         user-start (.format (-> (Instant/ofEpochMilli start-ms) (.atZone tz-id) .toLocalDate) date-fmt)
+                         user-end   (.format (-> (Instant/ofEpochMilli (dec end-ms)) (.atZone tz-id) .toLocalDate) date-fmt)]
+                     (if (= user-start user-end)
+                       [user-start]
+                       [user-start user-end]))))
+         distinct
+         sort
+         reverse)))
+
+(defn load-data-for-user-day [date-str tz-str]
+  (let [tz-id    (ZoneId/of tz-str)
+        parsed   (LocalDate/parse date-str date-fmt)
+        start-ms (start-of-day-ms parsed tz-id)
+        end-ms   (start-of-day-ms (.plusDays parsed 1) tz-id)]
+    (->> (server-dates-for-range start-ms end-ms)
+         (mapcat (fn [sd] (load-data (data-file-for-date sd))))
+         (filter (fn [[ts _]] (and (>= ts start-ms) (< ts end-ms))))
+         (sort-by first))))
 
 (defn exists? []
   (boolean (seq (list-data-files))))
