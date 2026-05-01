@@ -89,7 +89,25 @@ const chart = new Chart(ctx, {
 
 const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-function fetchData(dateStr) {
+function autoY() {
+  const pts = chart.data.datasets[0].data;
+  if (!pts.length) return;
+  const values = pts.map(function(p) { return p.y; }).sort(function(a, b) { return a - b; });
+  const p1  = Math.floor(values.length * 0.01);
+  const p99 = Math.ceil(values.length * 0.99) - 1;
+  const lo = values[p1];
+  const hi = values[p99];
+  const buf = (hi - lo) * 0.1;
+  const s = loadSettings();
+  s.yMin = Math.round(lo - buf);
+  s.yMax = Math.round(hi + buf);
+  saveSettings(s);
+  document.getElementById('y-min').value = s.yMin;
+  document.getElementById('y-max').value = s.yMax;
+  applySettings(s);
+}
+
+function fetchData(dateStr, onLoad) {
   fetch('/data?date=' + dateStr + '&tz=' + encodeURIComponent(browserTz))
     .then(function(res) { return res.json(); })
     .then(function(d) {
@@ -97,12 +115,13 @@ function fetchData(dateStr) {
         return { x: ts, y: d.values[i] };
       });
       chart.update();
+      if (onLoad) onLoad();
     });
 }
 
 const dayPick = document.getElementById('day-pick');
 dayPick.addEventListener('change', function() {
-  fetchData(this.value);
+  fetchData(this.value, autoY);
 });
 
 fetch('/dates?tz=' + encodeURIComponent(browserTz))
@@ -135,20 +154,4 @@ wireInput('y-max',   'yMax',   parseFloat);
 wireInput('offset',  'offset', parseFloat);
 wireInput('factor',  'factor', parseFloat);
 
-document.getElementById('auto-y').addEventListener('click', function() {
-  const pts = chart.data.datasets[0].data;
-  if (!pts.length) return;
-  const values = pts.map(function(p) { return p.y; }).sort(function(a, b) { return a - b; });
-  const p1  = Math.floor(values.length * 0.01);
-  const p99 = Math.ceil(values.length * 0.99) - 1;
-  const lo = values[p1];
-  const hi = values[p99];
-  const buf = (hi - lo) * 0.1;
-  const s = loadSettings();
-  s.yMin = Math.round(lo - buf);
-  s.yMax = Math.round(hi + buf);
-  saveSettings(s);
-  document.getElementById('y-min').value = s.yMin;
-  document.getElementById('y-max').value = s.yMax;
-  applySettings(s);
-});
+document.getElementById('auto-y').addEventListener('click', autoY);
