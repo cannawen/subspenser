@@ -37,6 +37,8 @@
               .toolbar label { font-size: 0.875rem; color: #555; }
               .toolbar select, .toolbar input[type=number] { font-size: 0.875rem; padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; }
               .toolbar input[type=number] { width: 8rem; }
+              .toolbar button { font-size: 0.875rem; padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 4px; background: white; cursor: pointer; }
+              .toolbar button:hover { background: #f3f4f6; }
               .toolbar .sep { width: 1px; height: 1.5rem; background: #e5e7eb; }
               .chart-container { flex: 1; background: white; padding: 1.5rem; position: relative; }"]]
      [:body
@@ -49,6 +51,7 @@
        [:input#y-min {:type "number" :step "1000"}]
        [:label {:for "y-max"} "Y max"]
        [:input#y-max {:type "number" :step "1000"}]
+       [:button#auto-y {:type "button"} "Auto Y"]
        [:div.sep]
        [:label {:for "offset"} "Zero (raw)"]
        [:input#offset {:type "number" :step "1"}]

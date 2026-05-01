@@ -122,3 +122,19 @@ wireInput('y-min',   'yMin',   parseFloat);
 wireInput('y-max',   'yMax',   parseFloat);
 wireInput('offset',  'offset', parseFloat);
 wireInput('factor',  'factor', parseFloat);
+
+document.getElementById('auto-y').addEventListener('click', function() {
+  const pts = chart.data.datasets[0].data;
+  if (!pts.length) return;
+  const values = pts.map(function(p) { return p.y; });
+  const lo = Math.min.apply(null, values);
+  const hi = Math.max.apply(null, values);
+  const buf = (hi - lo) * 0.1;
+  const s = loadSettings();
+  s.yMin = Math.round(lo - buf);
+  s.yMax = Math.round(hi + buf);
+  saveSettings(s);
+  document.getElementById('y-min').value = s.yMin;
+  document.getElementById('y-max').value = s.yMax;
+  applySettings(s);
+});
